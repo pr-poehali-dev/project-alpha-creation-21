@@ -1,3 +1,7 @@
-# project-alpha-creation-21
+# FLUX CLI - Современный инструмент командной строки
 
-Initial repository setup for pr-poehali-dev/project-alpha-creation-21
+![Preview](preview.png)
+
+Лендинг для CLI-инструмента с AI-интеграцией. Темный терминальный дизайн с ASCII-артом, анимированным терминалом, демонстрацией команд и интерактивными элементами. Идеально подходит для разработчиков инструментов, CLI-утилит и DevOps-продуктов.
+
+`"tags": ["landing", "dark", "developer", "ai", "animations", "glass"]`
