@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react"
-import { Copy, Check, ArrowUp, Download, Upload, X, LogIn, UserPlus, LogOut } from "lucide-react"
+import { Copy, Check, ArrowUp, Download, Upload, X, LogIn, UserPlus, LogOut, User as UserIcon, Sword, Skull, Clock, Pickaxe, Shield } from "lucide-react"
 
 const MATRYOSHKA_IMG = "https://cdn.poehali.dev/projects/b964269c-dfc0-4015-8416-62c45be9b32e/files/a42cdd79-0086-4cb2-95d6-e6c801f1d859.jpg"
 const SERVER_ADDRESS = "matreshka.hypixel.ws"
@@ -15,6 +15,11 @@ const TABS = [
 
 interface User { id: number; nickname: string; is_admin: boolean }
 interface Mod { id: number; name: string; filename: string; url: string; size_bytes: number; uploaded_at: string }
+interface PlayerProfile {
+  nickname: string; is_admin: boolean; skin_url: string | null; head_url: string | null
+  stats: { playtime_h: number; blocks_mined: number; kills: number; deaths: number; kd: number }
+  join_date: string | null; last_seen: string | null
+}
 
 function PixBtn({ children, onClick, className = "", type = "button" as "button" | "submit", disabled = false }: {
   children: React.ReactNode; onClick?: () => void; className?: string; type?: "button" | "submit"; disabled?: boolean
@@ -30,6 +35,109 @@ function PixBtn({ children, onClick, className = "", type = "button" as "button"
   )
 }
 
+// --- Profile Modal ---
+function ProfileModal({ user, onClose }: { user: User; onClose: () => void }) {
+  const [profile, setProfile] = useState<PlayerProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`${AUTH_URL}?action=profile&id=${user.id}`)
+      .then(r => r.json())
+      .then(d => { setProfile(d); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [user.id])
+
+  const BR = "border-red-900/40"
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative bg-black border border-red-800 w-full max-w-lg mx-4 overflow-hidden"
+        style={{ boxShadow: "0 0 40px rgba(200,20,20,0.25)", fontFamily: "'Press Start 2P', monospace" }}
+        onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className={`flex items-center justify-between px-6 py-4 border-b ${BR} bg-red-950/10`}>
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 bg-red-600 animate-pulse" />
+            <span className="text-red-400 tracking-widest" style={{ fontSize: 9 }}>ЛИЧНЫЙ КАБИНЕТ</span>
+          </div>
+          <button onClick={onClose} className="text-red-900 hover:text-red-400 transition-colors"><X className="w-4 h-4" /></button>
+        </div>
+
+        {loading ? (
+          <div className="p-12 text-center text-red-900 animate-pulse" style={{ fontSize: 9 }}>ЗАГРУЗКА...</div>
+        ) : profile ? (
+          <div className="p-6">
+            {/* Player card */}
+            <div className={`flex gap-5 mb-6 p-4 border ${BR} bg-red-950/5`}>
+              {profile.skin_url ? (
+                <img src={profile.skin_url} alt="skin" style={{ height: 96, imageRendering: "pixelated" }} className="flex-shrink-0" />
+              ) : (
+                <div className="w-16 h-24 bg-red-950/30 border border-red-900/40 flex items-center justify-center flex-shrink-0">
+                  <UserIcon className="w-8 h-8 text-red-900" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className="text-red-400" style={{ fontSize: 13 }}>{profile.nickname}</span>
+                  {profile.is_admin && (
+                    <span className="border border-red-700 bg-red-950/40 text-red-500 px-2 py-0.5" style={{ fontSize: 7 }}>ADMIN</span>
+                  )}
+                </div>
+                <div className="space-y-1" style={{ fontSize: 8 }}>
+                  {profile.join_date && <div className="text-gray-600">Дата входа: <span className="text-gray-400">{profile.join_date}</span></div>}
+                  {profile.last_seen && <div className="text-gray-600">Последний раз: <span className="text-gray-400">{profile.last_seen}</span></div>}
+                  {!profile.join_date && !profile.last_seen && (
+                    <div className="text-gray-700">Ещё не заходил на сервер</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Stats grid */}
+            <div className="mb-2" style={{ fontSize: 8 }}>
+              <span className="text-red-900 tracking-widest">СТАТИСТИКА ИГРОКА</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { icon: <Clock className="w-4 h-4" />, label: "ВРЕМЯ В ИГРЕ", value: profile.stats.playtime_h > 0 ? `${profile.stats.playtime_h}ч` : "0ч" },
+                { icon: <Pickaxe className="w-4 h-4" />, label: "БЛОКОВ СЛОМАНО", value: profile.stats.blocks_mined.toLocaleString("ru") },
+                { icon: <Sword className="w-4 h-4" />, label: "УБИЙСТВ", value: profile.stats.kills.toString() },
+                { icon: <Skull className="w-4 h-4" />, label: "СМЕРТЕЙ", value: profile.stats.deaths.toString() },
+                { icon: <Shield className="w-4 h-4" />, label: "K/D РЕЙТИНГ", value: profile.stats.kd.toString() },
+              ].map((s, i) => (
+                <div key={i} className={`flex items-center gap-3 p-3 border ${BR} bg-black`}>
+                  <span className="text-red-800 flex-shrink-0">{s.icon}</span>
+                  <div>
+                    <div className="text-gray-700" style={{ fontSize: 7 }}>{s.label}</div>
+                    <div className="text-red-400 mt-0.5" style={{ fontSize: 11 }}>{s.value}</div>
+                  </div>
+                </div>
+              ))}
+              <div className={`flex items-center gap-3 p-3 border ${BR} bg-black`}>
+                <span className="text-red-800 flex-shrink-0"><UserIcon className="w-4 h-4" /></span>
+                <div>
+                  <div className="text-gray-700" style={{ fontSize: 7 }}>НА СЕРВЕРЕ</div>
+                  <div className="text-red-400 mt-0.5" style={{ fontSize: 9 }}>МАТ&amp;РЕШКА</div>
+                </div>
+              </div>
+            </div>
+
+            {profile.stats.playtime_h === 0 && (
+              <div className={`mt-4 border ${BR} bg-red-950/5 p-3 text-center text-red-900`} style={{ fontSize: 8 }}>
+                Статистика появится после первого входа на сервер
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-8 text-center text-red-700" style={{ fontSize: 9 }}>Не удалось загрузить профиль</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// --- Auth Modal ---
 function AuthModal({ onClose, onLogin }: { onClose: () => void; onLogin: (user: User) => void }) {
   const [mode, setMode] = useState<"login" | "register">("login")
   const [email, setEmail] = useState("")
@@ -102,6 +210,7 @@ function AuthModal({ onClose, onLogin }: { onClose: () => void; onLogin: (user: 
   )
 }
 
+// --- Admin upload ---
 function AdminUploadPanel({ adminToken, onUploaded }: { adminToken: string; onUploaded: () => void }) {
   const [name, setName] = useState("")
   const [file, setFile] = useState<File | null>(null)
@@ -210,6 +319,7 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState("about")
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [mods, setMods] = useState<Mod[]>([])
   const [modsLoaded, setModsLoaded] = useState(false)
@@ -236,7 +346,7 @@ export default function Index() {
 
   const termSeqs = [
     { command: `ping ${SERVER_ADDRESS}`, outputs: ["Подключение к серверу...", "Ответ: 12ms", "Пакеты: 4/4", "Сервер онлайн!"] },
-    { command: "status --players", outputs: ["Режимы: Survival, SkyBlock, Prison", `Версия: ${serverVersion} Java`, "Ваниль без лишнего", "Стабильно!"] },
+    { command: "status --players", outputs: ["Режимы: Survival, Creative, Adventure", `Версия: ${serverVersion} Java`, "Ваниль без лишнего", "Стабильно!"] },
     { command: "connect --server matreshka", outputs: ["Авторизация...", "Загрузка мира...", "Добро пожаловать!", "Приятной игры!"] },
   ]
 
@@ -325,7 +435,12 @@ export default function Index() {
             </div>
             {user ? (
               <div className="flex items-center gap-2">
-                <span className="text-red-800 hidden sm:inline" style={{ fontSize: 8 }}>{user.nickname}</span>
+                <button
+                  onClick={() => setShowProfile(true)}
+                  className={`flex items-center gap-2 border ${BR} px-3 py-1.5 text-red-500 hover:border-red-600 hover:text-red-400 transition-colors`}
+                  style={{ fontSize: 8 }}>
+                  <UserIcon className="w-3 h-3" />{user.nickname}
+                </button>
                 <button onClick={() => { localStorage.removeItem("mc_user"); setUser(null) }} className="text-red-900 hover:text-red-500 transition-colors p-1"><LogOut className="w-4 h-4" /></button>
               </div>
             ) : (
@@ -353,7 +468,7 @@ export default function Index() {
       <div className="scan-line" style={{ background: "linear-gradient(90deg,transparent,rgba(200,20,20,0.4),transparent)" }} />
 
       {verifyMsg && (
-        <div className="bg-red-950/80 border-b border-red-900 px-6 py-3 text-center text-red-300 relative z-10" style={{ fontSize: 9 }}>
+        <div className={`bg-red-950/80 border-b ${BR} px-6 py-3 text-center text-red-300 relative z-10`} style={{ fontSize: 9 }}>
           {verifyMsg}<button onClick={() => setVerifyMsg("")} className="ml-4 text-red-800 hover:text-red-400"><X className="w-3 h-3 inline" /></button>
         </div>
       )}
@@ -390,7 +505,7 @@ export default function Index() {
               Русский ванильный<br />Minecraft-сервер
             </h1>
             <p className="text-gray-600 leading-relaxed max-w-2xl mx-auto mb-10" style={{ fontSize: 9 }}>
-              Чистый ваниль без лишнего. Survival, SkyBlock и Prison — классика, в которую приятно играть.
+              Чистый ваниль без лишнего. Survival, Creative и Adventure — классика, в которую приятно играть.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <div className="group relative cursor-pointer w-full sm:w-auto" onClick={() => copy(SERVER_ADDRESS, "hero-ip")}>
@@ -430,6 +545,48 @@ export default function Index() {
         </div>
       </section>
 
+      {/* What is Minecraft */}
+      <section className={`px-6 py-16 lg:px-12 border-t ${BR} bg-red-950/5`}>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-10">
+            <div className={`inline-flex items-center gap-3 border ${BR} px-4 py-2 mb-6 text-red-900 tracking-widest`} style={{ fontSize: 8 }}>
+              <div className="w-2 h-2 bg-red-800" />ЧТО ТАКОЕ MINECRAFT<div className="w-2 h-2 bg-red-800" />
+            </div>
+            <h2 className="text-xl lg:text-2xl font-bold mb-8">Если ты слышишь об этом впервые</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className={`border ${BR} bg-black p-6`}>
+              <div className="text-3xl mb-4">🧱</div>
+              <h3 className="text-red-400 mb-3 tracking-wider" style={{ fontSize: 10 }}>МИР ИЗ КУБИКОВ</h3>
+              <p className="text-gray-500 leading-relaxed" style={{ fontSize: 9 }}>
+                Minecraft — это игра, в которой весь мир состоит из блоков. Ты можешь сломать любой блок и поставить его в другом месте. Представь бесконечный конструктор LEGO, только в компьютере.
+              </p>
+            </div>
+            <div className={`border ${BR} bg-black p-6`}>
+              <div className="text-3xl mb-4">⛏</div>
+              <h3 className="text-red-400 mb-3 tracking-wider" style={{ fontSize: 10 }}>ЧЕМ ТЫ ЗАНИМАЕШЬСЯ</h3>
+              <p className="text-gray-500 leading-relaxed" style={{ fontSize: 9 }}>
+                Копаешь землю в поисках ресурсов, строишь дома и замки, готовишь еду, сражаешься с монстрами ночью. Никакого сюжета — делаешь что хочешь, как в жизни, только интереснее.
+              </p>
+            </div>
+            <div className={`border ${BR} bg-black p-6`}>
+              <div className="text-3xl mb-4">👥</div>
+              <h3 className="text-red-400 mb-3 tracking-wider" style={{ fontSize: 10 }}>ВМЕСТЕ ВЕСЕЛЕЕ</h3>
+              <p className="text-gray-500 leading-relaxed" style={{ fontSize: 9 }}>
+                На сервере — это когда несколько людей играют в одном мире одновременно. Ты можешь строить с друзьями, торговать, помогать или соревноваться. Наш сервер именно для этого.
+              </p>
+            </div>
+            <div className={`border ${BR} bg-black p-6`}>
+              <div className="text-3xl mb-4">🏆</div>
+              <h3 className="text-red-400 mb-3 tracking-wider" style={{ fontSize: 10 }}>ЦЕЛЬ ИГРЫ</h3>
+              <p className="text-gray-500 leading-relaxed" style={{ fontSize: 9 }}>
+                Формально — победить финального босса Дракона Края. На практике — большинство игроков просто строят красивые постройки, общаются и исследуют мир. Каждый играет по-своему.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Modes */}
       <section className={`px-6 py-20 lg:px-12 border-t ${BR}`} id="modes">
         <div className="max-w-7xl mx-auto">
@@ -437,23 +594,43 @@ export default function Index() {
             <div className={`inline-flex items-center gap-3 border ${BR} px-4 py-2 mb-6 text-red-900 tracking-widest`} style={{ fontSize: 8 }}>
               <div className="w-2 h-2 bg-red-800" />ИГРОВЫЕ РЕЖИМЫ<div className="w-2 h-2 bg-red-800" />
             </div>
-            <h2 className="text-2xl lg:text-3xl font-bold">Что тебя ждёт</h2>
+            <h2 className="text-2xl lg:text-3xl font-bold">Режимы на нашем сервере</h2>
+            <p className="text-gray-600 mt-3 max-w-xl mx-auto" style={{ fontSize: 8 }}>Только стандартные режимы Minecraft — ничего лишнего</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { icon: "⛏", title: "SURVIVAL", desc: "Ванильное выживание без плагинов. Добывай ресурсы, строй базу, торгуй с игроками на честной экономике.", tag: "ВАНИЛЬ" },
-              { icon: "🏝", title: "SKYBLOCK", desc: "Начни с маленького острова в небе и построй целую цивилизацию. Классический SkyBlock с заданиями и прогрессом.", tag: "КЛАССИКА" },
-              { icon: "⛓", title: "PRISON", desc: "Шахтёрская тюрьма — копай блоки, зарабатывай монеты, повышай ранг и вырвись на свободу. PvP и экономика.", tag: "АКТИВНО" },
+              {
+                icon: "⛏",
+                title: "ВЫЖИВАНИЕ",
+                sub: "Survival Mode",
+                desc: "Самый популярный режим. Ты появляешься в случайном месте мира с пустыми руками. Нужно добыть еду, построить дом до ночи, когда появляются зомби и скелеты. Здесь важна каждая смерть — теряешь все предметы.",
+                tag: "КЛАССИКА"
+              },
+              {
+                icon: "🏗",
+                title: "ТВОРЧЕСТВО",
+                sub: "Creative Mode",
+                desc: "Все блоки и предметы уже есть в инвентаре бесплатно. Ты летаешь, не умираешь, ничего не ломается. Режим для строителей — возводи архитектурные шедевры без ограничений.",
+                tag: "ДЛЯ СТРОИТЕЛЕЙ"
+              },
+              {
+                icon: "🗺",
+                title: "ПРИКЛЮЧЕНИЕ",
+                sub: "Adventure Mode",
+                desc: "Режим для исследователей. Нельзя просто ломать блоки руками — только специальными инструментами. Создан для прохождения карт и историй, созданных другими игроками.",
+                tag: "ИССЛЕДОВАНИЕ"
+              },
             ].map((m, i) => (
               <div key={i} className="group relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-red-950/20 to-gray-900 transform rotate-1 group-hover:rotate-2 transition-transform duration-300" />
-                <div className={`relative bg-black border ${BR} p-6 hover:border-red-700/60 transition-all duration-300`}>
+                <div className={`relative bg-black border ${BR} p-6 hover:border-red-700/60 transition-all duration-300 h-full`}>
                   <div className="flex items-start justify-between mb-4">
                     <span className="text-3xl">{m.icon}</span>
                     <span className={`border ${BR} text-red-900 px-2 py-0.5 tracking-wider`} style={{ fontSize: 7 }}>{m.tag}</span>
                   </div>
-                  <h3 className="font-bold mb-3 text-red-500 tracking-wider" style={{ fontSize: 11 }}>{m.title}</h3>
-                  <p className="text-gray-600 leading-relaxed" style={{ fontSize: 9 }}>{m.desc}</p>
+                  <h3 className="font-bold mb-1 text-red-500 tracking-wider" style={{ fontSize: 11 }}>{m.title}</h3>
+                  <p className="text-red-900 mb-3 italic" style={{ fontSize: 8 }}>{m.sub}</p>
+                  <p className="text-gray-500 leading-relaxed" style={{ fontSize: 9 }}>{m.desc}</p>
                 </div>
               </div>
             ))}
@@ -593,6 +770,7 @@ export default function Index() {
       </button>
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onLogin={u => setUser(u)} />}
+      {showProfile && user && <ProfileModal user={user} onClose={() => setShowProfile(false)} />}
     </div>
   )
 }
