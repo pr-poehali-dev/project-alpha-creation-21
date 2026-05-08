@@ -1,0 +1,17 @@
+{
+  "tests": [
+    {
+      "name": "OPTIONS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Missing fields on register",
+      "method": "POST",
+      "path": "/?action=register",
+      "body": {"email": "", "nickname": "", "password": ""},
+      "expectedStatus": 400
+    }
+  ]
+}
